@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class JavaguardIpsApplication {
+public class JavaGuardIpsApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(JavaguardIpsApplication.class, args);
+        SpringApplication.run(JavaGuardIpsApplication.class, args);
     }
 
 }
