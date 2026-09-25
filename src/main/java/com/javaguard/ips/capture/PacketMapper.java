@@ -56,6 +56,11 @@ public class PacketMapper {
 
         NetworkProtocol protocol = NetworkProtocol.OTHER;
 
+        boolean tcpSyn = false;
+        boolean tcpAck = false;
+        boolean tcpRst = false;
+        boolean tcpFin = false;
+
         TcpPacket tcpPacket = packet.get(TcpPacket.class);
 
         UdpPacket udpPacket = packet.get(UdpPacket.class);
@@ -66,10 +71,26 @@ public class PacketMapper {
                     .getSrcPort()
                     .valueAsInt();
 
-            destinationPort = udpPacket
+            destinationPort = tcpPacket
                     .getHeader()
                     .getDstPort()
                     .valueAsInt();
+
+            tcpSyn = tcpPacket
+                    .getHeader()
+                    .getSyn();
+
+            tcpAck = tcpPacket
+                    .getHeader()
+                    .getAck();
+
+            tcpRst = tcpPacket
+                    .getHeader()
+                    .getRst();
+
+            tcpFin = tcpPacket
+                    .getHeader()
+                    .getFin();
 
             protocol  = NetworkProtocol.TCP;
 
@@ -107,7 +128,11 @@ public class PacketMapper {
                         sourcePort,
                         destinationPort,
                         protocol,
-                        packet.length()
+                        packet.length(),
+                        tcpSyn,
+                        tcpAck,
+                        tcpRst,
+                        tcpFin
                 );
 
         return Optional.of(event);

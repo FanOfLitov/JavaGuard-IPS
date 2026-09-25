@@ -9,6 +9,10 @@ public record NetworkEvent (
     Integer sourcePort,
     Integer destinationPort,
     NetworkProtocol protocol,
-    int packetSize
+    int packetSize,
+    boolean tcpSyn,
+    boolean tcpAck,
+    boolean tcpRst,
+    boolean tcpFin
 ){
 }

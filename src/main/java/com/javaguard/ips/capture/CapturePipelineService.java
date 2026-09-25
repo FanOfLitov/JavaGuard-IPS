@@ -1,7 +1,7 @@
 package com.javaguard.ips.capture;
 
 import com.javaguard.ips.event.NetworkEvent;
-
+import com.javaguard.ips.detection.DetectionEngine;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
@@ -27,9 +27,16 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import com.javaguard.ips.statistics.TrafficStatisticsService;
+
 
 @Service
 public class CapturePipelineService {
+
+    private final DetectionEngine detectionEngine;
+
+    private final TrafficStatisticsService trafficStatisticsService;
+
 
     private static final Logger log =
             LoggerFactory.getLogger(CapturePipelineService.class);
@@ -42,8 +49,11 @@ public class CapturePipelineService {
 
     private final PacketMapper packetMapper;
 
+
     private final BlockingQueue<NetworkEvent> eventQueue =
             new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+
+
 
     private final ExecutorService captureExecutor =
             Executors.newSingleThreadExecutor(
@@ -78,9 +88,13 @@ public class CapturePipelineService {
     private volatile PcapHandle handle;
 
     public CapturePipelineService(
-            PacketMapper packetMapper
+            PacketMapper packetMapper,
+            TrafficStatisticsService trafficStatisticsService,
+            DetectionEngine detectionEngine
     ) {
         this.packetMapper = packetMapper;
+        this.trafficStatisticsService = trafficStatisticsService;
+        this.detectionEngine = detectionEngine;
     }
 
     @PostConstruct
@@ -197,9 +211,7 @@ public class CapturePipelineService {
 
                 } catch (TimeoutException ignored) {
 
-                    // Normal situation:
-                    // no packet arrived during the read timeout.
-                }
+                      }
             }
 
         } catch (
@@ -274,6 +286,7 @@ public class CapturePipelineService {
             NetworkEvent event
     ) {
 
+        trafficStatisticsService.record(event);
         lastEvent.set(event);
 
         processedEvents.incrementAndGet();
@@ -298,6 +311,9 @@ public class CapturePipelineService {
         droppedEvents.set(0);
 
         lastEvent.set(null);
+
+        trafficStatisticsService.reset();
+
     }
 
     @PreDestroy
