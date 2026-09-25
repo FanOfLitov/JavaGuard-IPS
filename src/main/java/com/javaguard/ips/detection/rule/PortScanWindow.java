@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class PortScanWindow {
 
-    private final Map<Integer, Instant> port = new HashMap<>();
+    private final Map<Integer, Instant> ports = new HashMap<>();
 
     public synchronized int record(
             int port,

@@ -21,7 +21,9 @@ public class PortScanRule implements DetectionRule{
 
     private static final Duration WINDOW =Duration.ofSeconds(10);
 
-    private static final Map<ScanKey,PortScanWindow> window= new ConcurrentHashMap<>();
+    private static final Duration ALERT_COOLDOWN = Duration.ofSeconds(30);
+
+    private static final Map<ScanKey,PortScanWindow> windows= new ConcurrentHashMap<>();
 
     private final Map<ScanKey, Instant> lastAlerts = new ConcurrentHashMap<>();
 
@@ -39,7 +41,7 @@ public class PortScanRule implements DetectionRule{
 
         ScanKey key = new ScanKey(
                 event.sourceIp(),
-                even.destinationIp()
+                event.destinationIp()
         );
 
         PortScanWindow window = windows.computeIfAbsent(
