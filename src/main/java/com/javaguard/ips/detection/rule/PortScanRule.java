@@ -90,7 +90,7 @@ public class PortScanRule implements DetectionRule{
                         event.destinationIp(),
                         "TCP port scan detected: "
                             +distinctPorts
-                            +"distinct ports withis "
+                            +"distinct ports within "
                             + WINDOW.toSeconds()
                             + " seconds",
                         distinctPorts

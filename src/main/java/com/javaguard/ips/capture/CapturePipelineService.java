@@ -28,13 +28,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import com.javaguard.ips.statistics.TrafficStatisticsService;
+import com.javaguard.ips.detection.DetectionEngine;
 
 
 @Service
 public class CapturePipelineService {
 
     private final DetectionEngine detectionEngine;
-
     private final TrafficStatisticsService trafficStatisticsService;
 
 
@@ -287,6 +287,7 @@ public class CapturePipelineService {
     ) {
 
         trafficStatisticsService.record(event);
+        detectionEngine.analyze(event);
         lastEvent.set(event);
 
         processedEvents.incrementAndGet();
