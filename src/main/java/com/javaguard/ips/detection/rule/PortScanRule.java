@@ -23,7 +23,7 @@ public class PortScanRule implements DetectionRule{
 
     private static final Duration ALERT_COOLDOWN = Duration.ofSeconds(30);
 
-    private static final Map<ScanKey,PortScanWindow> windows= new ConcurrentHashMap<>();
+    private final Map<ScanKey,PortScanWindow> windows= new ConcurrentHashMap<>();
 
     private final Map<ScanKey, Instant> lastAlerts = new ConcurrentHashMap<>();
 
