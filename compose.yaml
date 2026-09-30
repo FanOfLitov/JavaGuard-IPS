@@ -1,0 +1,22 @@
+services:
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: javaguard-postgres
+
+    environment:
+      POSTGRES_DB: javaguard
+      POSTGRES_USER: javaguard
+      POSTGRES_PASSWORD: javaguard
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - javaguard-postgres-data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+
+volumes:
+  javaguard-postgres-data:

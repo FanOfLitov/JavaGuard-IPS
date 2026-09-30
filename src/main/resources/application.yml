@@ -1,13 +1,17 @@
 spring:
-  application:
-    name: javaguard-ips
 
-  server:
-    port: 8080
+  datasource:
+    url: ${JAVAGUARD_DB_URL:jdbc:postgresql://localhost:5432/javaguard}
+    username: ${JAVAGUARD_DB_USER:javaguard}
+    password: ${JAVAGUARD_DB_PASSWORD:javaguard}
 
-  management:
-    endpoints:
-      web:
-        exposure:
-          include:
-            - health
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    open-in-view: false
+
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC

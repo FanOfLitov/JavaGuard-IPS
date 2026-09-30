@@ -25,6 +25,7 @@ dependencies {
     implementation("org.pcap4j:pcap4j-packetfactory-static:1.8.2")
 
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
 
 
@@ -33,6 +34,9 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    runtimeOnly("org.postgresql:postgresql")
+
+    testRuntimeOnly("com.h2database:h2")
 }
 
 tasks.withType<Test> {
