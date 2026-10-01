@@ -23,7 +23,11 @@ class DetectionEngineTest {
 
     @Test
     void shouldPublishAlertWhenPortScanIsDetected(){
-        AlertService alertService = new AlertService();
+        SecurityAlertStore alertStore =
+                mock(SecurityAlertStore.class);
+
+        AlertService alertService =
+                new AlertService(alertStore);
         PortScanRule portScanRule = new PortScanRule();
 
         DetectionEngine detectionEngine = new DetectionEngine(
@@ -75,8 +79,12 @@ class DetectionEngineTest {
     }
 
     @Test
-    void shouldNotPublishAlertForNornalTraffic(){
-        AlertService alertService = new AlertService();
+    void shouldNotPublishAlertForNormalTraffic(){
+        SecurityAlertStore alertStore =
+                mock(SecurityAlertStore.class);
+
+        AlertService alertService =
+                new AlertService(alertStore);
         PortScanRule portScanRule = new PortScanRule();
         DetectionEngine detectionEngine = new DetectionEngine(List.of(portScanRule),
                 alertService
@@ -102,8 +110,11 @@ class DetectionEngineTest {
     @Test
     void shouldWorkWithMultipleDetectionRules() {
 
+        SecurityAlertStore alertStore =
+                mock(SecurityAlertStore.class);
+
         AlertService alertService =
-                new AlertService();
+                new AlertService(alertStore);
 
         PortScanRule portScanRule =
                 new PortScanRule();

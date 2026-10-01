@@ -1,7 +1,6 @@
 spring:
-
   datasource:
-    url: ${JAVAGUARD_DB_URL:jdbc:postgresql://localhost:5432/javaguard}
+    url: ${JAVAGUARD_DB_URL:jdbc:postgresql://localhost:5434/javaguard}
     username: ${JAVAGUARD_DB_USER:javaguard}
     password: ${JAVAGUARD_DB_PASSWORD:javaguard}
 

@@ -270,8 +270,15 @@ public class CapturePipelineService {
                 if (event == null) {
                     continue;
                 }
-
-                process(event);
+                try {
+                    process(event);
+                }catch (RuntimeException exception){
+                    log.error(
+                            "Failed to process network event: {}",
+                            event,
+                            exception
+                    );
+                }
 
             } catch (InterruptedException exception) {
 

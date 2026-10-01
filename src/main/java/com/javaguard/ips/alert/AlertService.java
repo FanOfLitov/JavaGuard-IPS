@@ -2,8 +2,12 @@ package com.javaguard.ips.alert;
 
 import com.javaguard.ips.detection.model.SecurityEvent;
 import com.javaguard.ips.persistence.SecurityAlertStore;
-
+import com.javaguard.ips.statistics.SecurityStatisticsSnapshot;
 import org.springframework.stereotype.Service;
+import com.javaguard.ips.detection.model.Severity;
+import com.javaguard.ips.detection.model.ThreatType;
+
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -48,6 +52,10 @@ public class AlertService {
                 .limit(100)
                 .toList();
     }
+    public SecurityStatisticsSnapshot getStatistics() {
+
+        return alertStore.statistics();
+    }
 
 
     public List<SecurityEvent> getAlertHistory() {
@@ -59,5 +67,24 @@ public class AlertService {
     public long getStoredAlertCount() {
 
         return alertStore.count();
+    }
+
+    public Page<SecurityEvent> searchAlerts(
+            ThreatType type,
+            Severity severity,
+            String sourceIp,
+            String destinationIp,
+            int page,
+            int size
+    ) {
+
+        return alertStore.search(
+                type,
+                severity,
+                sourceIp,
+                destinationIp,
+                page,
+                size
+        );
     }
 }

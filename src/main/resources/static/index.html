@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>JavaGuard IPS</title>
+
+    <link
+            rel="stylesheet"
+            href="/styles.css"
+    >
+
+    <script
+            src="/app.js"
+            defer
+    ></script>
+</head>
+
+<body>
+
+<header class="header">
+
+    <div>
+        <h1>JavaGuard IPS</h1>
+        <p>Network Intrusion Prevention System</p>
+    </div>
+
+    <div
+            id="connectionStatus"
+            class="connection-status"
+    >
+        Connecting...
+    </div>
+
+</header>
+
+
+<main class="container">
+
+
+    <section class="capture-panel">
+
+        <div>
+            <h2>Packet Capture</h2>
+
+            <p>
+                Interface:
+                <strong id="activeInterface">
+                    -
+                </strong>
+            </p>
+        </div>
+
+
+        <div class="capture-controls">
+
+            <input
+                    id="interfaceInput"
+                    type="text"
+                    value="lo"
+                    placeholder="Network interface"
+            >
+
+            <button
+                    id="startCaptureButton"
+                    class="button primary"
+            >
+                Start
+            </button>
+
+            <button
+                    id="stopCaptureButton"
+                    class="button danger"
+            >
+                Stop
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <div
+            id="errorMessage"
+            class="error-message hidden"
+    ></div>
+
+
+    <section class="cards">
+
+        <article class="card">
+            <span class="card-label">
+                Capture
+            </span>
+
+            <strong
+                    id="captureState"
+                    class="card-value"
+            >
+                -
+            </strong>
+        </article>
+
+
+        <article class="card">
+            <span class="card-label">
+                Processed packets
+            </span>
+
+            <strong
+                    id="processedPackets"
+                    class="card-value"
+            >
+                0
+            </strong>
+        </article>
+
+
+        <article class="card">
+            <span class="card-label">
+                Dropped events
+            </span>
+
+            <strong
+                    id="droppedEvents"
+                    class="card-value"
+            >
+                0
+            </strong>
+        </article>
+
+
+        <article class="card">
+            <span class="card-label">
+                Packets / second
+            </span>
+
+            <strong
+                    id="packetsPerSecond"
+                    class="card-value"
+            >
+                0
+            </strong>
+        </article>
+
+
+        <article class="card">
+            <span class="card-label">
+                Total alerts
+            </span>
+
+            <strong
+                    id="totalAlerts"
+                    class="card-value"
+            >
+                0
+            </strong>
+        </article>
+
+
+        <article class="card">
+            <span class="card-label">
+                Alerts 24h
+            </span>
+
+            <strong
+                    id="alertsLast24Hours"
+                    class="card-value"
+            >
+                0
+            </strong>
+        </article>
+
+    </section>
+
+
+    <section class="dashboard-grid">
+
+
+        <article class="panel">
+
+            <h2>Protocols</h2>
+
+            <div
+                    id="protocolStatistics"
+                    class="stat-list"
+            ></div>
+
+        </article>
+
+
+        <article class="panel">
+
+            <h2>Threat Types</h2>
+
+            <div
+                    id="threatStatistics"
+                    class="stat-list"
+            ></div>
+
+        </article>
+
+
+        <article class="panel">
+
+            <h2>Severity</h2>
+
+            <div
+                    id="severityStatistics"
+                    class="stat-list"
+            ></div>
+
+        </article>
+
+
+        <article class="panel">
+
+            <h2>Top Source IPs</h2>
+
+            <div
+                    id="topSourceIps"
+                    class="stat-list"
+            ></div>
+
+        </article>
+
+    </section>
+
+
+    <section class="panel alerts-panel">
+
+        <div class="section-header">
+
+            <div>
+                <h2>Recent Security Alerts</h2>
+                <p>Latest detected threats stored in PostgreSQL</p>
+            </div>
+
+            <button
+                    id="refreshButton"
+                    class="button"
+            >
+                Refresh
+            </button>
+
+        </div>
+
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Source</th>
+                    <th>Destination</th>
+                    <th>Evidence</th>
+                    <th>Description</th>
+                </tr>
+
+                </thead>
+
+
+                <tbody id="alertsTableBody">
+
+                <tr>
+                    <td colspan="7">
+                        No data
+                    </td>
+                </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+</body>
+
+</html>

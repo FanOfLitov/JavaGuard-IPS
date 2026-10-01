@@ -1,5 +1,4 @@
 package com.javaguard.ips.detection;
-import com.javaguard.ips.detection.model.SecurityEvent;
 import com.javaguard.ips.alert.AlertService;
 import com.javaguard.ips.event.NetworkEvent;
 
