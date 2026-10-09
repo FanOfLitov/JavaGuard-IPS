@@ -13,7 +13,7 @@ import {
 import StatCard from '../components/StatCard'
 import StatList from '../components/StatList'
 import CapturePanel from '../components/CapturePanel'
-import AlertsTable from '../components/AlertsTable'
+import AlertsTable from '../components/AlertsTable.jsx'
 
 
 export default function DashboardPage() {
@@ -149,39 +149,39 @@ export default function DashboardPage() {
     return (
         <>
 
-            <header className="header">
+            {/*<header className="header">*/}
 
-                <div>
+            {/*    <div>*/}
 
-                    <h1>
-                        JavaGuard IPS
-                    </h1>
+            {/*        <h1>*/}
+            {/*            JavaGuard IPS*/}
+            {/*        </h1>*/}
 
-                    <p>
-                        Network Security Dashboard
-                    </p>
+            {/*        <p>*/}
+            {/*            Network Security Dashboard*/}
+            {/*        </p>*/}
 
-                </div>
-
-
-                <div
-                    className={
-                        connected
-                            ? 'connection connected'
-                            : 'connection disconnected'
-                    }
-                >
-                    {
-                        connected
-                            ? 'Connected'
-                            : 'Disconnected'
-                    }
-                </div>
-
-            </header>
+            {/*    </div>*/}
 
 
-            <main className="container">
+            {/*    <div*/}
+            {/*        className={*/}
+            {/*            connected*/}
+            {/*                ? 'connection connected'*/}
+            {/*                : 'connection disconnected'*/}
+            {/*        }*/}
+            {/*    >*/}
+            {/*        {*/}
+            {/*            connected*/}
+            {/*                ? 'Connected'*/}
+            {/*                : 'Disconnected'*/}
+            {/*        }*/}
+            {/*    </div>*/}
+
+            {/*</header>*/}
+
+
+            {/*<main className="container">*/}
 
                 {
                     error
@@ -332,7 +332,7 @@ export default function DashboardPage() {
                     }
                 />
 
-            </main>
+
 
         </>
     )

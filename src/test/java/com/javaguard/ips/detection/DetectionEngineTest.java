@@ -11,6 +11,8 @@ import com.javaguard.ips.event.NetworkProtocol;
 import com.javaguard.ips.persistence.SecurityAlertStore;
 
 import static org.mockito.Mockito.mock;
+
+import com.javaguard.ips.response.AutoResponseService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -32,7 +34,8 @@ class DetectionEngineTest {
 
         DetectionEngine detectionEngine = new DetectionEngine(
                 List.of(portScanRule),
-                alertService);
+                alertService,
+                mock(AutoResponseService.class));
         Instant startTime = Instant.parse("2026-09-25T12:00:00Z");
 
         for(int i=0;i<15;i++){
@@ -87,7 +90,7 @@ class DetectionEngineTest {
                 new AlertService(alertStore);
         PortScanRule portScanRule = new PortScanRule();
         DetectionEngine detectionEngine = new DetectionEngine(List.of(portScanRule),
-                alertService
+                alertService, mock(AutoResponseService.class)
         );
 
         Instant startTime = Instant.parse("2026-09-25T12:00:00Z");
@@ -127,8 +130,10 @@ class DetectionEngineTest {
                         List.of(
                                 portScanRule,
                                 synFloodRule
+
                         ),
-                        alertService
+                        alertService,
+                        mock(AutoResponseService.class)
                 );
 
         Instant startTime =

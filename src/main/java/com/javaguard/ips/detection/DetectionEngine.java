@@ -1,8 +1,9 @@
 package com.javaguard.ips.detection;
 import com.javaguard.ips.alert.AlertService;
 import com.javaguard.ips.event.NetworkEvent;
+import com.javaguard.ips.response.AutoResponseService;
 
-
+import com.javaguard.ips.response.AutoResponseService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,14 +13,16 @@ import java.util.Optional;
 public class DetectionEngine {
     private final List<DetectionRule>rules;
     private final AlertService alertService;
-
+    private final AutoResponseService autoResponseService;
 
     public DetectionEngine(
             List<DetectionRule> rules,
-            AlertService alertService
+            AlertService alertService,
+            AutoResponseService autoResponseService
     ){
         this.rules = rules;
         this.alertService = alertService;
+        this.autoResponseService=  autoResponseService;
     }
 
     public void analyze(NetworkEvent event) {
