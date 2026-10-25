@@ -1,7 +1,11 @@
 package com.javaguard.ips.response;
 
+import com.javaguard.ips.persistence.BlockedIpStore;
+
 import com.javaguard.ips.response.firewall.FirewallAdapter;
+
 import com.javaguard.ips.response.model.BlockRecord;
+import com.javaguard.ips.response.model.BlockSource;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -9,30 +13,41 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-
-import java.util.concurrent.ConcurrentHashMap;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ThreatResponseService {
 
     private final FirewallAdapter firewallAdapter;
 
-
-    private final Map<String, BlockRecord> blockedIps =
-            new ConcurrentHashMap<>();
+    private final BlockedIpStore blockedIpStore;
 
 
+    private final ProtectedAddressService protectedAddressService;
     public ThreatResponseService(
-            FirewallAdapter firewallAdapter
+            FirewallAdapter firewallAdapter,
+            BlockedIpStore blockedIpStore,
+            ProtectedAddressService protectedAddressService
     ) {
 
         this.firewallAdapter =
                 firewallAdapter;
+
+        this.blockedIpStore =
+                blockedIpStore;
+
+        this.protectedAddressService =
+                protectedAddressService;
     }
+
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    ThreatResponseService.class
+            );
+
+
 
 
     public BlockRecord block(
@@ -41,7 +56,34 @@ public class ThreatResponseService {
             String reason
     ) {
 
+        return block(
+                ip,
+                duration,
+                reason,
+                BlockSource.MANUAL
+        );
+    }
+
+
+    public BlockRecord block(
+            String ip,
+            Duration duration,
+            String reason,
+            BlockSource source
+    ) {
+
         validateIp(ip);
+
+        if (
+                protectedAddressService.isProtected(ip)
+        ) {
+
+            throw new IllegalArgumentException(
+                    "Protected IP address cannot be blocked: "
+                            + ip
+            );
+        }
+
         validateDuration(duration);
 
 
@@ -49,29 +91,32 @@ public class ThreatResponseService {
                 Instant.now();
 
 
-        Instant expiresAt =
-                now.plus(duration);
-
-
-        String normalizedReason =
-                normalizeReason(reason);
-
-
         BlockRecord record =
                 new BlockRecord(
-                        ip,
-                        normalizedReason,
+                        ip.trim(),
+                        normalizeReason(reason),
                         now,
-                        expiresAt
+                        now.plus(duration)
                 );
 
 
-        firewallAdapter.block(ip);
+        boolean alreadyBlocked =
+                blockedIpStore.isActive(
+                        record.ip()
+                );
 
 
-        blockedIps.put(
-                ip,
-                record
+        if (!alreadyBlocked) {
+
+            firewallAdapter.block(
+                    record.ip()
+            );
+        }
+
+
+        blockedIpStore.save(
+                record,
+                source
         );
 
 
@@ -83,16 +128,21 @@ public class ThreatResponseService {
             String ip
     ) {
 
-        BlockRecord removed =
-                blockedIps.remove(ip);
+        validateIp(ip);
 
 
-        if (removed == null) {
+        if (
+                !blockedIpStore.isActive(ip)
+        ) {
+
             return false;
         }
 
 
         firewallAdapter.unblock(ip);
+
+
+        blockedIpStore.deactivate(ip);
 
 
         return true;
@@ -103,38 +153,19 @@ public class ThreatResponseService {
             String ip
     ) {
 
-        cleanupExpired();
-
-
-        return blockedIps.containsKey(ip);
+        return blockedIpStore.isActive(ip);
     }
 
 
     public List<BlockRecord> getBlockedIps() {
 
-        cleanupExpired();
-
-
-        return blockedIps
-                .values()
-                .stream()
-                .sorted(
-                        Comparator
-                                .comparing(
-                                        BlockRecord::blockedAt
-                                )
-                                .reversed()
-                )
-                .toList();
+        return blockedIpStore.findActive();
     }
 
 
     public long getBlockedCount() {
 
-        cleanupExpired();
-
-
-        return blockedIps.size();
+        return blockedIpStore.countActive();
     }
 
 
@@ -147,24 +178,15 @@ public class ThreatResponseService {
                 Instant.now();
 
 
-        List<String> expiredIps =
-                blockedIps
-                        .values()
-                        .stream()
-                        .filter(
-                                record ->
-                                        !record
-                                                .expiresAt()
-                                                .isAfter(now)
-                        )
-                        .map(
-                                BlockRecord::ip
-                        )
-                        .toList();
+        List<BlockRecord> expired =
+                blockedIpStore.findExpired(now);
 
 
-        expiredIps.forEach(
-                this::unblock
+        expired.forEach(
+                record ->
+                        unblock(
+                                record.ip()
+                        )
         );
     }
 
@@ -220,5 +242,46 @@ public class ThreatResponseService {
 
 
         return reason.trim();
+    }
+
+
+    public void restoreActiveBlocks() {
+
+        cleanupExpired();
+
+
+        List<BlockRecord> activeBlocks =
+                blockedIpStore.findActive();
+
+
+        log.info(
+                "Restoring {} active firewall blocks",
+                activeBlocks.size()
+        );
+
+
+        for (BlockRecord record : activeBlocks) {
+
+            try {
+
+                firewallAdapter.block(
+                        record.ip()
+                );
+
+
+                log.info(
+                        "Restored firewall block for {}",
+                        record.ip()
+                );
+
+            } catch (RuntimeException exception) {
+
+                log.error(
+                        "Failed to restore firewall block for {}",
+                        record.ip(),
+                        exception
+                );
+            }
+        }
     }
 }

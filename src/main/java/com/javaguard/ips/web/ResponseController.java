@@ -1,5 +1,6 @@
 package com.javaguard.ips.web;
 
+import com.javaguard.ips.response.ProtectedAddressService;
 import com.javaguard.ips.response.ThreatResponseService;
 import com.javaguard.ips.response.model.BlockRecord;
 import com.javaguard.ips.web.dto.BlockIpRequest;
@@ -18,6 +19,7 @@ import java.time.Duration;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 @RestController
@@ -26,16 +28,29 @@ import java.util.Map;
 )
 public class ResponseController {
 
-    private final ThreatResponseService
-            responseService;
+    private final ThreatResponseService responseService;
+
+    private final ProtectedAddressService protectedAddressService;
+
 
 
     public ResponseController(
-            ThreatResponseService responseService
+            ThreatResponseService responseService,
+            ProtectedAddressService protectedAddressService
     ) {
 
         this.responseService =
                 responseService;
+
+        this.protectedAddressService =
+                protectedAddressService;
+    }
+
+    @GetMapping("/protected")
+    public Set<String> protectedAddresses() {
+
+        return protectedAddressService
+                .getProtectedAddresses();
     }
 
 

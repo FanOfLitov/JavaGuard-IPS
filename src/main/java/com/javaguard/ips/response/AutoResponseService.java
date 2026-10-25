@@ -2,7 +2,7 @@ package com.javaguard.ips.response;
 
 import com.javaguard.ips.detection.model.SecurityEvent;
 import com.javaguard.ips.response.model.ResponseDecision;
-
+import com.javaguard.ips.response.model.BlockSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -59,7 +59,8 @@ public class AutoResponseService {
         responseService.block(
                 event.sourceIp(),
                 decision.duration(),
-                decision.reason()
+                decision.reason(),
+                BlockSource.AUTOMATIC
         );
 
 
