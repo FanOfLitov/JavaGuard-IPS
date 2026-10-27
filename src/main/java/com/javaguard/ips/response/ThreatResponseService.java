@@ -23,23 +23,24 @@ public class ThreatResponseService {
     private final FirewallAdapter firewallAdapter;
 
     private final BlockedIpStore blockedIpStore;
+    private final AllowlistService allowlistService;
 
 
     private final ProtectedAddressService protectedAddressService;
     public ThreatResponseService(
             FirewallAdapter firewallAdapter,
             BlockedIpStore blockedIpStore,
-            ProtectedAddressService protectedAddressService
+            ProtectedAddressService protectedAddressService,
+            AllowlistService allowlistService
     ) {
 
-        this.firewallAdapter =
-                firewallAdapter;
+        this.firewallAdapter = firewallAdapter;
 
-        this.blockedIpStore =
-                blockedIpStore;
+        this.blockedIpStore = blockedIpStore;
 
-        this.protectedAddressService =
-                protectedAddressService;
+        this.protectedAddressService = protectedAddressService;
+
+        this.allowlistService = allowlistService;
     }
 
     private static final Logger log =
@@ -87,8 +88,7 @@ public class ThreatResponseService {
         validateDuration(duration);
 
 
-        Instant now =
-                Instant.now();
+        Instant now = Instant.now();
 
 
         BlockRecord record =
@@ -110,6 +110,17 @@ public class ThreatResponseService {
 
             firewallAdapter.block(
                     record.ip()
+            );
+        }
+
+        if (
+                allowlistService
+                        .isAllowed(ip)
+        ) {
+
+            throw new IllegalArgumentException(
+                    "Allowlisted IP address cannot be blocked: "
+                            + ip
             );
         }
 

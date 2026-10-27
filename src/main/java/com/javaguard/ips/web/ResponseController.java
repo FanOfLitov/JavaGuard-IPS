@@ -20,7 +20,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import com.javaguard.ips.response.AllowlistService;
+import com.javaguard.ips.response.model.AllowlistEntry;
+import com.javaguard.ips.web.dto.AddAllowlistEntryRequest;
 
 @RestController
 @RequestMapping(
@@ -33,17 +35,19 @@ public class ResponseController {
     private final ProtectedAddressService protectedAddressService;
 
 
+    private final AllowlistService allowlistService;
+
 
     public ResponseController(
             ThreatResponseService responseService,
-            ProtectedAddressService protectedAddressService
+            ProtectedAddressService protectedAddressService,
+            AllowlistService allowlistService
     ) {
 
-        this.responseService =
-                responseService;
+        this.responseService = responseService;
 
-        this.protectedAddressService =
-                protectedAddressService;
+        this.protectedAddressService = protectedAddressService;
+        this.allowlistService=allowlistService;
     }
 
     @GetMapping("/protected")
@@ -113,5 +117,50 @@ public class ResponseController {
                 responseService
                         .getBlockedCount()
         );
+    }
+
+
+    @GetMapping("/allowlist")
+    public List<AllowlistEntry> allowlist() {
+
+        return allowlistService
+                .getAll();
+    }
+
+
+    @PostMapping("/allowlist")
+    public AllowlistEntry addAllowlistEntry(
+            @RequestBody
+            AddAllowlistEntryRequest request
+    ) {
+
+        return allowlistService.add(
+                request.ip(),
+                request.description()
+        );
+    }
+
+
+    @DeleteMapping("/allowlist")
+    public ResponseEntity<Void> removeAllowlistEntry(
+            @RequestParam
+            String ip
+    ) {
+
+        boolean removed =
+                allowlistService.remove(ip);
+
+
+        if (!removed) {
+
+            return ResponseEntity
+                    .notFound()
+                    .build();
+        }
+
+
+        return ResponseEntity
+                .noContent()
+                .build();
     }
 }

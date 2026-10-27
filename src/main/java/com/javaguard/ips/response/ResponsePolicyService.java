@@ -14,23 +14,23 @@ import java.time.Duration;
 @Service
 public class ResponsePolicyService {
 
-    private final ProtectedAddressService
-            protectedAddressService;
+    private final ProtectedAddressService protectedAddressService;
 
-    private final ResponseProperties
-            properties;
+    private final ResponseProperties properties;
+    private final AllowlistService allowlistService;
 
 
     public ResponsePolicyService(
             ProtectedAddressService protectedAddressService,
-            ResponseProperties properties
+            ResponseProperties properties,
+            AllowlistService allowlistService
     ) {
 
-        this.protectedAddressService =
-                protectedAddressService;
+        this.protectedAddressService = protectedAddressService;
 
-        this.properties =
-                properties;
+        this.properties = properties;
+
+        this.allowlistService = allowlistService;
     }
 
 
@@ -45,8 +45,7 @@ public class ResponsePolicyService {
 
 
         if (
-                !properties
-                        .isAutoBlockEnabled()
+                !properties.isAutoBlockEnabled()
         ) {
 
             return ResponseDecision.ignore();
@@ -54,8 +53,15 @@ public class ResponsePolicyService {
 
 
         if (
-                protectedAddressService
-                        .isProtected(
+                protectedAddressService.isProtected(event.sourceIp()
+                )
+        ) {
+
+            return ResponseDecision.ignore();
+        }
+
+        if (
+                allowlistService.isAllowed(
                                 event.sourceIp()
                         )
         ) {
