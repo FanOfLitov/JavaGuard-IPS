@@ -135,7 +135,7 @@ public class ThreatResponseService {
     }
 
 
-    public boolean unblock(
+    public synchronized boolean unblock(
             String ip
     ) {
 
@@ -158,7 +158,6 @@ public class ThreatResponseService {
 
         return true;
     }
-
 
     public boolean isBlocked(
             String ip
