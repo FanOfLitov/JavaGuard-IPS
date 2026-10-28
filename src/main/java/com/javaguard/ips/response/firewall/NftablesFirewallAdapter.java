@@ -1,13 +1,14 @@
 package com.javaguard.ips.response.firewall;
 
+import com.javaguard.ips.response.validation.IpAddressParser;
+import com.javaguard.ips.response.validation.IpAddressParser.ParsedIpAddress;
+
 import jakarta.annotation.PostConstruct;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.boot.autoconfigure.condition
-        .ConditionalOnProperty;
-
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -18,7 +19,6 @@ import java.util.List;
 
 
 @Component
-
 @ConditionalOnProperty(
         prefix = "javaguard.response",
         name = "mode",
@@ -36,23 +36,52 @@ public class NftablesFirewallAdapter
     private static final String TABLE =
             "javaguard";
 
+
     private static final String IPV4_SET =
             "blocked_ipv4";
+
 
     private static final String IPV6_SET =
             "blocked_ipv6";
 
 
+    private final IpAddressParser
+            ipAddressParser;
+
+
+    public NftablesFirewallAdapter(
+            IpAddressParser ipAddressParser
+    ) {
+
+        this.ipAddressParser =
+                ipAddressParser;
+    }
+
+
     @PostConstruct
     public void initialize() {
+
+        verifyNftablesAvailable();
+
+
 
         if (tableExists()) {
 
             log.info(
-                    "JavaGuard nftables table already exists"
+                    "Removing existing JavaGuard nftables table"
             );
 
-            return;
+
+            runCommand(
+                    List.of(
+                            "nft",
+                            "delete",
+                            "table",
+                            "inet",
+                            TABLE
+                    ),
+                    true
+            );
         }
 
 
@@ -73,15 +102,15 @@ public class NftablesFirewallAdapter
                 }
 
                 add chain inet javaguard input {
-                    type filter hook input priority 0;
+                    type filter hook input priority filter;
                     policy accept;
                 }
 
                 add rule inet javaguard input \
-                    ip saddr @blocked_ipv4 drop
+                    ip saddr @blocked_ipv4 counter drop
 
                 add rule inet javaguard input \
-                    ip6 saddr @blocked_ipv6 drop
+                    ip6 saddr @blocked_ipv6 counter drop
                 """;
 
 
@@ -99,11 +128,11 @@ public class NftablesFirewallAdapter
             String ip
     ) {
 
-        IpAddress address =
-                parseIp(ip);
+        ParsedIpAddress address =
+                ipAddressParser.parse(ip);
 
 
-        String set =
+        String targetSet =
                 address.ipv6()
                         ? IPV6_SET
                         : IPV4_SET;
@@ -113,7 +142,7 @@ public class NftablesFirewallAdapter
                 "add element inet "
                         + TABLE
                         + " "
-                        + set
+                        + targetSet
                         + " { "
                         + address.value()
                         + " }\n";
@@ -123,8 +152,9 @@ public class NftablesFirewallAdapter
 
 
         log.warn(
-                "Firewall block applied: ip={}",
-                address.value()
+                "Firewall block applied: ip={}, set={}",
+                address.value(),
+                targetSet
         );
     }
 
@@ -134,11 +164,11 @@ public class NftablesFirewallAdapter
             String ip
     ) {
 
-        IpAddress address =
-                parseIp(ip);
+        ParsedIpAddress address =
+                ipAddressParser.parse(ip);
 
 
-        String set =
+        String targetSet =
                 address.ipv6()
                         ? IPV6_SET
                         : IPV4_SET;
@@ -148,7 +178,7 @@ public class NftablesFirewallAdapter
                 "delete element inet "
                         + TABLE
                         + " "
-                        + set
+                        + targetSet
                         + " { "
                         + address.value()
                         + " }\n";
@@ -158,8 +188,37 @@ public class NftablesFirewallAdapter
 
 
         log.info(
-                "Firewall block removed: ip={}",
-                address.value()
+                "Firewall block removed: ip={}, set={}",
+                address.value(),
+                targetSet
+        );
+    }
+
+
+    private void verifyNftablesAvailable() {
+
+        CommandResult result =
+                runCommand(
+                        List.of(
+                                "nft",
+                                "--version"
+                        ),
+                        false
+                );
+
+
+        if (result.exitCode() != 0) {
+
+            throw new IllegalStateException(
+                    "nftables is not available: "
+                            + result.output()
+            );
+        }
+
+
+        log.info(
+                "nftables detected: {}",
+                result.output().trim()
         );
     }
 
@@ -200,11 +259,11 @@ public class NftablesFirewallAdapter
 
 
             try (
-                    var output =
+                    var stdin =
                             process.getOutputStream()
             ) {
 
-                output.write(
+                stdin.write(
                         script.getBytes(
                                 StandardCharsets.UTF_8
                         )
@@ -212,7 +271,7 @@ public class NftablesFirewallAdapter
             }
 
 
-            String commandOutput =
+            String output =
                     new String(
                             process
                                     .getInputStream()
@@ -228,20 +287,25 @@ public class NftablesFirewallAdapter
             if (exitCode != 0) {
 
                 throw new IllegalStateException(
-                        "nft command failed: "
-                                + commandOutput
+                        "nftables command failed: "
+                                + output.trim()
                 );
             }
 
 
-        } catch (IOException exception) {
+        } catch (
+                IOException exception
+        ) {
 
             throw new IllegalStateException(
-                    "Failed to execute nft command",
+                    "Failed to execute nftables",
                     exception
             );
 
-        } catch (InterruptedException exception) {
+
+        } catch (
+                InterruptedException exception
+        ) {
 
             Thread
                     .currentThread()
@@ -249,7 +313,7 @@ public class NftablesFirewallAdapter
 
 
             throw new IllegalStateException(
-                    "nft command was interrupted",
+                    "nftables command was interrupted",
                     exception
             );
         }
@@ -290,7 +354,12 @@ public class NftablesFirewallAdapter
 
                 throw new IllegalStateException(
                         "Command failed: "
-                                + output
+                                + String.join(
+                                " ",
+                                command
+                        )
+                                + ": "
+                                + output.trim()
                 );
             }
 
@@ -301,14 +370,20 @@ public class NftablesFirewallAdapter
             );
 
 
-        } catch (IOException exception) {
+        } catch (
+                IOException exception
+        ) {
 
             throw new IllegalStateException(
-                    "Failed to execute command",
+                    "Failed to execute command: "
+                            + command,
                     exception
             );
 
-        } catch (InterruptedException exception) {
+
+        } catch (
+                InterruptedException exception
+        ) {
 
             Thread
                     .currentThread()
@@ -323,106 +398,12 @@ public class NftablesFirewallAdapter
     }
 
 
-    private IpAddress parseIp(
-            String value
-    ) {
-
-        if (
-                value == null
-                        ||
-                        value.isBlank()
-        ) {
-
-            throw new IllegalArgumentException(
-                    "IP address must not be empty"
-            );
-        }
-
-
-        String ip =
-                value.trim();
-
-
-        if (ip.contains("%")) {
-
-            throw new IllegalArgumentException(
-                    "IPv6 zone identifiers are not supported"
-            );
-        }
-
-
-        if (ip.contains(":")) {
-
-            return new IpAddress(
-                    ip,
-                    true
-            );
-        }
-
-
-        String[] parts =
-                ip.split(
-                        "\\.",
-                        -1
-                );
-
-
-        if (parts.length != 4) {
-
-            throw new IllegalArgumentException(
-                    "Invalid IPv4 address: "
-                            + ip
-            );
-        }
-
-
-        for (String part : parts) {
-
-            try {
-
-                int number =
-                        Integer.parseInt(part);
-
-
-                if (
-                        number < 0
-                                ||
-                                number > 255
-                ) {
-
-                    throw new IllegalArgumentException(
-                            "Invalid IPv4 address: "
-                                    + ip
-                    );
-                }
-
-            } catch (NumberFormatException exception) {
-
-                throw new IllegalArgumentException(
-                        "Invalid IPv4 address: "
-                                + ip
-                );
-            }
-        }
-
-
-        return new IpAddress(
-                ip,
-                false
-        );
-    }
-
-
-    private record IpAddress(
-            String value,
-            boolean ipv6
-    ) {
-    }
-
-
     private record CommandResult(
+
             int exitCode,
+
             String output
+
     ) {
     }
 }

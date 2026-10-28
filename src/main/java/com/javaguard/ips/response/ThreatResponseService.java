@@ -66,7 +66,7 @@ public class ThreatResponseService {
     }
 
 
-    public BlockRecord block(
+    public synchronized BlockRecord block(
             String ip,
             Duration duration,
             String reason,
