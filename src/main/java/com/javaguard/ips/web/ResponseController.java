@@ -24,6 +24,10 @@ import com.javaguard.ips.response.AllowlistService;
 import com.javaguard.ips.response.model.AllowlistEntry;
 import com.javaguard.ips.web.dto.AddAllowlistEntryRequest;
 
+
+import com.javaguard.ips.response.ResponseStatusService;
+import com.javaguard.ips.web.dto.ResponseStatusResponse;
+
 @RestController
 @RequestMapping(
         "/api/v1/response"
@@ -36,16 +40,20 @@ public class ResponseController {
 
 
     private final AllowlistService allowlistService;
+    private final ResponseStatusService responseStatusService;
 
 
     public ResponseController(
             ThreatResponseService responseService,
             ProtectedAddressService protectedAddressService,
-            AllowlistService allowlistService
+            AllowlistService allowlistService,
+            ResponseStatusService responseStatusService
     ) {
+
 
         this.responseService = responseService;
 
+        this.responseStatusService = responseStatusService;
         this.protectedAddressService = protectedAddressService;
         this.allowlistService=allowlistService;
     }
@@ -162,5 +170,12 @@ public class ResponseController {
         return ResponseEntity
                 .noContent()
                 .build();
+    }
+
+    @GetMapping("/status")
+    public ResponseStatusResponse status() {
+
+        return responseStatusService
+                .getStatus();
     }
 }

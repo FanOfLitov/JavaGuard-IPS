@@ -2,10 +2,18 @@ package com.javaguard.ips.response.firewall;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 
 @Component
+@ConditionalOnProperty(
+        prefix = "javaguard.response",
+        name = "mode",
+        havingValue = "logging",
+        matchIfMissing = true
+)
 public class LoggingFirewallAdapter
         implements FirewallAdapter {
 
@@ -16,7 +24,9 @@ public class LoggingFirewallAdapter
 
 
     @Override
-    public void block(String ip) {
+    public void block(
+            String ip
+    ) {
 
         log.warn(
                 "SIMULATED FIREWALL: blocking IP {}",
@@ -26,7 +36,9 @@ public class LoggingFirewallAdapter
 
 
     @Override
-    public void unblock(String ip) {
+    public void unblock(
+            String ip
+    ) {
 
         log.info(
                 "SIMULATED FIREWALL: unblocking IP {}",

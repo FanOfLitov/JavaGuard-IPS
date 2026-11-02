@@ -30,3 +30,11 @@ javaguard:
       - 127.0.0.1
       - "::1"
       - "0:0:0:0:0:0:0:1"
+
+
+  fiveg:
+    open5gs:
+      enabled: ${JAVAGUARD_OPEN5GS_ENABLED:false}
+      smf-base-url: ${JAVAGUARD_OPEN5GS_SMF_URL:http://127.0.0.4:9090}
+      amf-base-url: ${JAVAGUARD_OPEN5GS_AMF_URL:http://127.0.0.5:9090}
+      sync-interval-ms: ${JAVAGUARD_OPEN5GS_SYNC_INTERVAL_MS:5000}

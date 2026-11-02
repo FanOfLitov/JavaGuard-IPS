@@ -115,4 +115,8 @@ public class AllowlistService {
 
         return description.trim();
     }
+
+    public int count(){
+        return getAll().size();
+    }
 }

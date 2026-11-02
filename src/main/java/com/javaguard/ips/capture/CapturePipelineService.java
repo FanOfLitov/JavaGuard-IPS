@@ -1,7 +1,16 @@
 package com.javaguard.ips.capture;
 
-import com.javaguard.ips.event.NetworkEvent;
+import com.javaguard.ips.capture.model.CapturedTrafficEvent;
 import com.javaguard.ips.detection.DetectionEngine;
+import com.javaguard.ips.event.NetworkEvent;
+import com.javaguard.ips.fiveg.correlation.EnrichedNetworkEvent;
+import com.javaguard.ips.fiveg.correlation.FiveGEnrichmentService;
+import com.javaguard.ips.fiveg.detection.FiveGDetectionEngine;
+import com.javaguard.ips.fiveg.gtpu.GtpUHeader;
+import com.javaguard.ips.fiveg.gtpu.GtpUPacketInspector;
+import com.javaguard.ips.fiveg.statistics.FiveGTrafficStatisticsService;
+import com.javaguard.ips.statistics.TrafficStatisticsService;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
@@ -18,41 +27,43 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.EOFException;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import com.javaguard.ips.statistics.TrafficStatisticsService;
-import com.javaguard.ips.detection.DetectionEngine;
-
+import com.javaguard.ips.fiveg.gtpu.GtpUHeader;
 
 @Service
 public class CapturePipelineService {
-
-    private final DetectionEngine detectionEngine;
-    private final TrafficStatisticsService trafficStatisticsService;
-
 
     private static final Logger log =
             LoggerFactory.getLogger(CapturePipelineService.class);
 
     private static final int SNAPSHOT_LENGTH = 65_536;
-
     private static final int READ_TIMEOUT_MILLIS = 1_000;
-
     private static final int QUEUE_CAPACITY = 10_000;
+
 
     private final PacketMapper packetMapper;
 
+    private final TrafficStatisticsService trafficStatisticsService;
+    private final DetectionEngine detectionEngine;
 
-    private final BlockingQueue<NetworkEvent> eventQueue =
+    private final GtpUPacketInspector gtpUPacketInspector;
+    private final FiveGEnrichmentService fiveGEnrichmentService;
+    private final FiveGTrafficStatisticsService fiveGTrafficStatisticsService;
+    private final FiveGDetectionEngine fiveGDetectionEngine;
+
+
+    private final BlockingQueue<CapturedTrafficEvent> eventQueue =
             new ArrayBlockingQueue<>(QUEUE_CAPACITY);
-
 
 
     private final ExecutorService captureExecutor =
@@ -65,11 +76,13 @@ public class CapturePipelineService {
                     task -> new Thread(task, "javaguard-processor")
             );
 
+
     private final AtomicBoolean capturing =
             new AtomicBoolean(false);
 
     private final AtomicBoolean applicationRunning =
             new AtomicBoolean(true);
+
 
     private final AtomicLong capturedPackets =
             new AtomicLong();
@@ -80,34 +93,43 @@ public class CapturePipelineService {
     private final AtomicLong droppedEvents =
             new AtomicLong();
 
+
     private final AtomicReference<NetworkEvent> lastEvent =
             new AtomicReference<>();
+
 
     private volatile String interfaceName;
 
     private volatile PcapHandle handle;
 
+
     public CapturePipelineService(
             PacketMapper packetMapper,
             TrafficStatisticsService trafficStatisticsService,
-            DetectionEngine detectionEngine
+            DetectionEngine detectionEngine,
+            GtpUPacketInspector gtpUPacketInspector,
+            FiveGEnrichmentService fiveGEnrichmentService,
+            FiveGTrafficStatisticsService fiveGTrafficStatisticsService,
+            FiveGDetectionEngine fiveGDetectionEngine
     ) {
         this.packetMapper = packetMapper;
         this.trafficStatisticsService = trafficStatisticsService;
         this.detectionEngine = detectionEngine;
+
+        this.gtpUPacketInspector = gtpUPacketInspector;
+        this.fiveGEnrichmentService = fiveGEnrichmentService;
+        this.fiveGTrafficStatisticsService = fiveGTrafficStatisticsService;
+        this.fiveGDetectionEngine = fiveGDetectionEngine;
     }
+
 
     @PostConstruct
     public void startProcessor() {
-
-        processingExecutor.submit(
-                this::processingLoop
-        );
+        processingExecutor.submit(this::processingLoop);
     }
 
-    public synchronized CapturePipelineStatus start(
-            String interfaceName
-    ) {
+
+    public synchronized CapturePipelineStatus start(String interfaceName) {
 
         if (capturing.get()) {
             throw new IllegalStateException(
@@ -116,23 +138,19 @@ public class CapturePipelineService {
         }
 
         try {
-
             PcapNetworkInterface networkInterface =
                     Pcaps.getDevByName(interfaceName);
 
             if (networkInterface == null) {
                 throw new IllegalArgumentException(
-                        "Network interface not found: "
-                                + interfaceName
+                        "Network interface not found: " + interfaceName
                 );
             }
 
             PcapHandle newHandle =
                     networkInterface.openLive(
                             SNAPSHOT_LENGTH,
-                            PcapNetworkInterface
-                                    .PromiscuousMode
-                                    .NONPROMISCUOUS,
+                            PcapNetworkInterface.PromiscuousMode.NONPROMISCUOUS,
                             READ_TIMEOUT_MILLIS
                     );
 
@@ -155,14 +173,13 @@ public class CapturePipelineService {
             return getStatus();
 
         } catch (PcapNativeException exception) {
-
             throw new IllegalStateException(
-                    "Could not start capture on interface: "
-                            + interfaceName,
+                    "Could not start capture on interface: " + interfaceName,
                     exception
             );
         }
     }
+
 
     public synchronized CapturePipelineStatus stop() {
 
@@ -175,6 +192,7 @@ public class CapturePipelineService {
 
         return getStatus();
     }
+
 
     public CapturePipelineStatus getStatus() {
 
@@ -190,16 +208,13 @@ public class CapturePipelineService {
         );
     }
 
-    private void captureLoop(
-            PcapHandle captureHandle
-    ) {
+
+    private void captureLoop(PcapHandle captureHandle) {
 
         try {
-
             while (capturing.get()) {
 
                 try {
-
                     Packet packet =
                             captureHandle.getNextPacketEx();
 
@@ -207,11 +222,18 @@ public class CapturePipelineService {
 
                     packetMapper
                             .map(packet)
-                            .ifPresent(this::enqueue);
+                            .ifPresent(
+                                    networkEvent ->
+                                            enqueue(
+                                                    packet,
+                                                    networkEvent
+                                            )
+                            );
 
                 } catch (TimeoutException ignored) {
-
-                      }
+                    // Нормальная ситуация:
+                    // за READ_TIMEOUT_MILLIS пакет не пришёл.
+                }
             }
 
         } catch (
@@ -221,7 +243,6 @@ public class CapturePipelineService {
         ) {
 
             if (capturing.get()) {
-
                 log.error(
                         "Packet capture failed",
                         exception
@@ -229,7 +250,6 @@ public class CapturePipelineService {
             }
 
         } finally {
-
             capturing.set(false);
 
             if (captureHandle.isOpen()) {
@@ -242,73 +262,126 @@ public class CapturePipelineService {
         }
     }
 
+
     private void enqueue(
-            NetworkEvent event
+            Packet packet,
+            NetworkEvent networkEvent
     ) {
 
+        var gtpUPacket = gtpUPacketInspector
+                        .inspect(packet)
+                        .orElse(null);
+
+        CapturedTrafficEvent capturedEvent = new CapturedTrafficEvent(
+                        networkEvent,
+                        gtpUPacket
+                );
+
         boolean added =
-                eventQueue.offer(event);
+                eventQueue.offer(capturedEvent);
 
         if (!added) {
-
             droppedEvents.incrementAndGet();
+
+            log.warn(
+                    "Capture queue is full. Event dropped: {} -> {}",
+                    networkEvent.sourceIp(),
+                    networkEvent.destinationIp()
+            );
         }
     }
+
 
     private void processingLoop() {
 
         while (applicationRunning.get()) {
 
             try {
-
-                NetworkEvent event =
+                CapturedTrafficEvent capturedEvent =
                         eventQueue.poll(
                                 500,
                                 TimeUnit.MILLISECONDS
                         );
 
-                if (event == null) {
+                if (capturedEvent == null) {
                     continue;
                 }
+
                 try {
-                    process(event);
-                }catch (RuntimeException exception){
+                    EnrichedNetworkEvent enrichedEvent =
+                            fiveGEnrichmentService.enrich(
+                                    capturedEvent
+                            );
+
+                    process(enrichedEvent);
+
+                } catch (RuntimeException exception) {
                     log.error(
-                            "Failed to process network event: {}",
-                            event,
+                            "Failed to process captured event: {}",
+                            capturedEvent,
                             exception
                     );
                 }
 
             } catch (InterruptedException exception) {
-
                 Thread.currentThread().interrupt();
-
                 return;
             }
         }
     }
 
+
     private void process(
-            NetworkEvent event
+            EnrichedNetworkEvent enrichedEvent
     ) {
 
-        trafficStatisticsService.record(event);
-        detectionEngine.analyze(event);
-        lastEvent.set(event);
+        NetworkEvent networkEvent =
+                enrichedEvent.networkEvent();
+
+
+        // Обычная IDS-часть JavaGuard.
+        trafficStatisticsService.record(networkEvent);
+        detectionEngine.analyze(networkEvent);
+
+
+        // Новая 5G-aware часть.
+        fiveGTrafficStatisticsService.record(
+                enrichedEvent
+        );
+
+        fiveGDetectionEngine.analyze(
+                enrichedEvent
+        );
+
+
+        lastEvent.set(networkEvent);
 
         processedEvents.incrementAndGet();
 
+
         log.debug(
                 "{} {}:{} -> {}:{} size={}",
-                event.protocol(),
-                event.sourceIp(),
-                event.sourcePort(),
-                event.destinationIp(),
-                event.destinationPort(),
-                event.packetSize()
+                networkEvent.protocol(),
+                networkEvent.sourceIp(),
+                networkEvent.sourcePort(),
+                networkEvent.destinationIp(),
+                networkEvent.destinationPort(),
+                networkEvent.packetSize()
         );
+
+
+        if (enrichedEvent.isGtpU()) {
+            log.debug(
+                    "GTP-U packet: TEID={}, contextResolved={}, direction={}",
+                    Long.toUnsignedString(
+                            enrichedEvent.gtpUHeader().teid()
+                    ),
+                    enrichedEvent.hasFiveGContext(),
+                    enrichedEvent.direction()
+            );
+        }
     }
+
 
     private void resetStatistics() {
 
@@ -321,8 +394,8 @@ public class CapturePipelineService {
         lastEvent.set(null);
 
         trafficStatisticsService.reset();
-
     }
+
 
     @PreDestroy
     public void shutdown() {
@@ -333,6 +406,17 @@ public class CapturePipelineService {
         captureExecutor.shutdownNow();
         processingExecutor.shutdownNow();
 
-        log.info("Capture pipeline shutdown completed");
+        PcapHandle currentHandle = handle;
+
+        if (
+                currentHandle != null
+                        && currentHandle.isOpen()
+        ) {
+            currentHandle.close();
+        }
+
+        log.info(
+                "Capture pipeline shutdown completed"
+        );
     }
 }

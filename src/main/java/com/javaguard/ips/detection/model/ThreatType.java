@@ -3,5 +3,10 @@ package com.javaguard.ips.detection.model;
 public enum ThreatType {
 
     PORT_SCAN,
-    SYN_FLOOD
+    SYN_FLOOD,
+    UNKNOWN_GTP_TEID,
+    UE_IP_MISMATCH,
+    SLICE_POLICY_VIOLATION,
+    STALE_PDU_SESSION,
+    CONTROL_PLANE_CONTEXT_MISMATCH
 }
