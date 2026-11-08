@@ -48,6 +48,23 @@ javaguard:
           distinct-destinations: 15
           cooldown: 30s
 
+      tcp:
+        half-open:
+          window: 10s
+          threshold: 100
+          cooldown: 30s
+
+        reset-burst:
+          window: 10s
+          threshold: 50
+          cooldown: 30s
+
+        failure-ratio:
+          window: 30s
+          minimum-flows: 20
+          threshold: 0.80
+          cooldown: 30s
+
     risk:
       enabled: true
       max-score: 100

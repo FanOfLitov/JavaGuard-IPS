@@ -91,6 +91,21 @@ public class ResponsePolicyService {
                  STALE_PDU_SESSION,
                  CONTROL_PLANE_CONTEXT_MISMATCH ->
                     ResponseDecision.ignore();
+
+            case HALF_OPEN_CONNECTION_FLOOD ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(20),
+                            "Automatic response to HALF_OPEN_CONNECTION_FLOOD"
+                    );
+
+            case TCP_RESET_BURST ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(10),
+                            "Automatic response to TCP_RESET_BURST"
+                    );
+
+            case TCP_CONNECTION_FAILURE_ANOMALY ->
+                    ResponseDecision.ignore();
         };
     }
 }

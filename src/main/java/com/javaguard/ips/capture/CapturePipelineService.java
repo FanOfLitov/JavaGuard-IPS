@@ -10,7 +10,7 @@ import com.javaguard.ips.fiveg.gtpu.GtpUHeader;
 import com.javaguard.ips.fiveg.gtpu.GtpUPacketInspector;
 import com.javaguard.ips.fiveg.statistics.FiveGTrafficStatisticsService;
 import com.javaguard.ips.statistics.TrafficStatisticsService;
-
+import com.javaguard.ips.flow.tcp.TcpFlowTracker;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
@@ -61,6 +61,7 @@ public class CapturePipelineService {
     private final FiveGTrafficStatisticsService fiveGTrafficStatisticsService;
     private final FiveGDetectionEngine fiveGDetectionEngine;
 
+    private final TcpFlowTracker tcpFlowTracker;
 
     private final BlockingQueue<CapturedTrafficEvent> eventQueue =
             new ArrayBlockingQueue<>(QUEUE_CAPACITY);
@@ -110,7 +111,8 @@ public class CapturePipelineService {
             GtpUPacketInspector gtpUPacketInspector,
             FiveGEnrichmentService fiveGEnrichmentService,
             FiveGTrafficStatisticsService fiveGTrafficStatisticsService,
-            FiveGDetectionEngine fiveGDetectionEngine
+            FiveGDetectionEngine fiveGDetectionEngine,
+            TcpFlowTracker tcpFlowTracker
     ) {
         this.packetMapper = packetMapper;
         this.trafficStatisticsService = trafficStatisticsService;
@@ -120,6 +122,7 @@ public class CapturePipelineService {
         this.fiveGEnrichmentService = fiveGEnrichmentService;
         this.fiveGTrafficStatisticsService = fiveGTrafficStatisticsService;
         this.fiveGDetectionEngine = fiveGDetectionEngine;
+        this.tcpFlowTracker =tcpFlowTracker;
     }
 
 
@@ -335,16 +338,20 @@ public class CapturePipelineService {
             EnrichedNetworkEvent enrichedEvent
     ) {
 
-        NetworkEvent networkEvent =
-                enrichedEvent.networkEvent();
+        NetworkEvent networkEvent = enrichedEvent.networkEvent();
+
+        tcpFlowTracker.track(networkEvent);
 
 
-        // Обычная IDS-часть JavaGuard.
-        trafficStatisticsService.record(networkEvent);
-        detectionEngine.analyze(networkEvent);
+        trafficStatisticsService.record(
+                networkEvent
+        );
+
+        detectionEngine.analyze(
+                networkEvent
+        );
 
 
-        // Новая 5G-aware часть.
         fiveGTrafficStatisticsService.record(
                 enrichedEvent
         );
@@ -354,7 +361,9 @@ public class CapturePipelineService {
         );
 
 
-        lastEvent.set(networkEvent);
+        lastEvent.set(
+                networkEvent
+        );
 
         processedEvents.incrementAndGet();
 
@@ -371,13 +380,18 @@ public class CapturePipelineService {
 
 
         if (enrichedEvent.isGtpU()) {
+
             log.debug(
                     "GTP-U packet: TEID={}, contextResolved={}, direction={}",
                     Long.toUnsignedString(
-                            enrichedEvent.gtpUHeader().teid()
+                            enrichedEvent
+                                    .gtpUHeader()
+                                    .teid()
                     ),
-                    enrichedEvent.hasFiveGContext(),
-                    enrichedEvent.direction()
+                    enrichedEvent
+                            .hasFiveGContext(),
+                    enrichedEvent
+                            .direction()
             );
         }
     }
