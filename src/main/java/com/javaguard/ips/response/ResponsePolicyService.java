@@ -34,66 +34,63 @@ public class ResponsePolicyService {
     }
 
 
-    public ResponseDecision evaluate(
-            SecurityEvent event
-    ) {
+    public ResponseDecision evaluate(SecurityEvent event) {
 
         if (event == null) {
-
             return ResponseDecision.ignore();
         }
 
-
-        if (
-                !properties.isAutoBlockEnabled()
-        ) {
-
+        if (!properties.isAutoBlockEnabled()) {
             return ResponseDecision.ignore();
         }
 
-
-        if (
-                protectedAddressService.isProtected(event.sourceIp()
-                )
-        ) {
-
+        if (protectedAddressService.isProtected(event.sourceIp())) {
             return ResponseDecision.ignore();
         }
 
-        if (
-                allowlistService.isAllowed(
-                                event.sourceIp()
-                        )
-        ) {
-
+        if (allowlistService.isAllowed(event.sourceIp())) {
             return ResponseDecision.ignore();
         }
 
+        return switch (event.type()) {
 
-        if (
-                event.type()
-                        == ThreatType.PORT_SCAN
-        ) {
+            case PORT_SCAN ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(5),
+                            "Automatic response to PORT_SCAN"
+                    );
 
-            return ResponseDecision.block(
-                    Duration.ofMinutes(5),
-                    "Automatic response to PORT_SCAN"
-            );
-        }
+            case HORIZONTAL_SCAN ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(10),
+                            "Automatic response to HORIZONTAL_SCAN"
+                    );
+
+            case SYN_FLOOD ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(15),
+                            "Automatic response to SYN_FLOOD"
+                    );
+
+            case UDP_FLOOD ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(10),
+                            "Automatic response to UDP_FLOOD"
+                    );
+
+            case ICMP_FLOOD ->
+                    ResponseDecision.block(
+                            Duration.ofMinutes(5),
+                            "Automatic response to ICMP_FLOOD"
+                    );
 
 
-        if (
-                event.type()
-                        == ThreatType.SYN_FLOOD
-        ) {
-
-            return ResponseDecision.block(
-                    Duration.ofMinutes(15),
-                    "Automatic response to SYN_FLOOD"
-            );
-        }
-
-
-        return ResponseDecision.ignore();
+            case UNKNOWN_GTP_TEID,
+                 UE_IP_MISMATCH,
+                 SLICE_POLICY_VIOLATION,
+                 STALE_PDU_SESSION,
+                 CONTROL_PLANE_CONTEXT_MISMATCH ->
+                    ResponseDecision.ignore();
+        };
     }
 }

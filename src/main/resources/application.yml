@@ -31,6 +31,32 @@ javaguard:
       - "::1"
       - "0:0:0:0:0:0:0:1"
 
+    detection:
+      behavior:
+        udp-flood:
+          window: 3s
+          threshold: 300
+          cooldown: 30s
+
+        icmp-flood:
+          window: 3s
+          threshold: 100
+          cooldown: 30s
+
+        horizontal-scan:
+          window: 10s
+          distinct-destinations: 15
+          cooldown: 30s
+
+    risk:
+      enabled: true
+      max-score: 100
+      block-threshold: 80
+      decay-points-per-minute: 10
+      diversity-bonus: 10
+      state-ttl: 1h
+      escalated-block-duration: 30m
+
 
   fiveg:
     open5gs:
